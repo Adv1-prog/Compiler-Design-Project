@@ -1,0 +1,17 @@
+// RuleC — sample program for Phase 1 prototype demo
+
+SENSOR temp: float;
+SENSOR humidity: float;
+SENSOR motion: int;
+
+RULE overheat_alert:
+  IF temp > 30.0 AND humidity < 20.0
+  THEN alert("High temp, low humidity");
+
+RULE comfort_zone:
+  IF temp >= 18.0 AND temp <= 26.0
+  THEN log("Temperature within comfort range");
+
+RULE intruder_check:
+  IF motion == 1 AND NOT (temp > 40.0)
+  THEN actuate(light, ON);

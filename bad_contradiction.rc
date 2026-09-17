@@ -1,0 +1,5 @@
+SENSOR temp: float;
+
+RULE impossible_rule:
+  IF temp > 30.0 AND temp < 10.0
+  THEN alert("This can never fire");
