@@ -1,0 +1,1545 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>RuleC Compiler Studio — Phase 3 Demo</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg:       #080c14;
+    --surface:  #0d1526;
+    --panel:    #111827;
+    --border:   #1e2d47;
+    --accent:   #38bdf8;
+    --accent2:  #818cf8;
+    --green:    #34d399;
+    --amber:    #fbbf24;
+    --red:      #f87171;
+    --text:     #e2e8f0;
+    --muted:    #64748b;
+    --keyword:  #c084fc;
+    --string:   #86efac;
+    --number:   #fb923c;
+    --ident:    #7dd3fc;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'Inter', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  code, pre, textarea, .mono { font-family: 'JetBrains Mono', monospace; }
+
+  /* ── HEADER ── */
+  header {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 10px 20px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-shrink: 0;
+    z-index: 10;
+  }
+
+  .logo {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .logo-icon {
+    width: 36px; height: 36px;
+    background: linear-gradient(135deg, #0ea5e9, #6366f1);
+    border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px;
+    box-shadow: 0 0 16px rgba(56,189,248,0.35);
+  }
+
+  .logo-title { font-size: 15px; font-weight: 700; color: #f1f5f9; }
+  .logo-sub { font-size: 11px; color: var(--muted); margin-top: 1px; }
+
+  .header-actions { display: flex; align-items: center; gap: 10px; }
+
+  .badge {
+    display: flex; align-items: center; gap: 6px;
+    padding: 5px 12px;
+    border-radius: 20px;
+    font-size: 11px;
+    font-weight: 500;
+    font-family: 'JetBrains Mono', monospace;
+  }
+  .badge-green { background: rgba(52,211,153,0.1); border: 1px solid rgba(52,211,153,0.25); color: var(--green); }
+  .badge-blue  { background: rgba(56,189,248,0.1);  border: 1px solid rgba(56,189,248,0.25);  color: var(--accent); }
+  .dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; animation: pulse 2s infinite; }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
+
+  .btn {
+    display: flex; align-items: center; gap: 8px;
+    padding: 8px 18px;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    border: none;
+    transition: all .18s;
+  }
+  .btn-primary {
+    background: linear-gradient(135deg, #0ea5e9, #6366f1);
+    color: white;
+    box-shadow: 0 4px 16px rgba(56,189,248,0.2);
+  }
+  .btn-primary:hover { transform: translateY(-1px); box-shadow: 0 6px 20px rgba(56,189,248,0.35); }
+  .btn-primary:active { transform: translateY(0); }
+  .btn-secondary {
+    background: var(--panel);
+    color: var(--text);
+    border: 1px solid var(--border);
+  }
+  .btn-secondary:hover { background: var(--border); }
+
+  /* ── PIPELINE BAR ── */
+  .pipeline-bar {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 8px 20px;
+    display: flex;
+    align-items: center;
+    gap: 0;
+    flex-shrink: 0;
+    overflow-x: auto;
+  }
+
+  .pipe-step {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 14px;
+    border-radius: 6px;
+    font-size: 11px;
+    font-weight: 600;
+    cursor: pointer;
+    border: 1px solid transparent;
+    transition: all .18s;
+    white-space: nowrap;
+    color: var(--muted);
+  }
+  .pipe-step:hover { color: var(--text); background: rgba(255,255,255,0.04); }
+  .pipe-step.active {
+    background: rgba(56,189,248,0.12);
+    border-color: rgba(56,189,248,0.3);
+    color: var(--accent);
+  }
+  .pipe-step.done { color: var(--green); }
+  .pipe-step.done .pipe-num {
+    background: rgba(52,211,153,0.15);
+    border-color: rgba(52,211,153,0.3);
+    color: var(--green);
+  }
+  .pipe-step.error-step { color: var(--red); }
+  .pipe-step.error-step .pipe-num {
+    background: rgba(248,113,113,0.15);
+    border-color: rgba(248,113,113,0.3);
+    color: var(--red);
+  }
+
+  .pipe-num {
+    width: 20px; height: 20px;
+    border-radius: 50%;
+    border: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 10px;
+    flex-shrink: 0;
+  }
+
+  .pipe-arrow {
+    color: var(--border);
+    font-size: 14px;
+    padding: 0 4px;
+    user-select: none;
+  }
+
+  /* ── WORKSPACE ── */
+  .workspace {
+    flex: 1;
+    display: grid;
+    grid-template-columns: 380px 1fr;
+    overflow: hidden;
+  }
+
+  /* ── LEFT: EDITOR ── */
+  .editor-panel {
+    display: flex;
+    flex-direction: column;
+    background: var(--surface);
+    border-right: 1px solid var(--border);
+    overflow: hidden;
+  }
+
+  .panel-header {
+    padding: 10px 16px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-shrink: 0;
+    background: var(--panel);
+  }
+
+  .panel-label {
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: .06em;
+    color: var(--muted);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .panel-label .dot-accent { width: 6px; height: 6px; border-radius: 50%; background: var(--accent); }
+
+  select {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    color: var(--text);
+    font-size: 11px;
+    padding: 4px 8px;
+    border-radius: 6px;
+    outline: none;
+    cursor: pointer;
+    font-family: 'JetBrains Mono', monospace;
+  }
+  select:hover { border-color: var(--accent); }
+
+  #sourceCode {
+    flex: 1;
+    padding: 16px;
+    background: #06090f;
+    color: var(--ident);
+    font-size: 13px;
+    line-height: 1.7;
+    resize: none;
+    outline: none;
+    border: none;
+    tab-size: 2;
+  }
+
+  /* ── DIAGNOSTICS ── */
+  .diag-panel {
+    flex-shrink: 0;
+    border-top: 1px solid var(--border);
+    background: var(--panel);
+  }
+
+  .diag-header {
+    padding: 8px 16px;
+    font-size: 10px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: .06em;
+    color: var(--muted);
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  #compilerLog {
+    height: 100px;
+    overflow-y: auto;
+    padding: 10px 14px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    line-height: 1.6;
+  }
+
+  .log-info  { color: var(--accent); }
+  .log-ok    { color: var(--green); }
+  .log-warn  { color: var(--amber); }
+  .log-error { color: var(--red); }
+
+  /* ── RIGHT: OUTPUT PANELS ── */
+  .output-panel {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    background: var(--bg);
+  }
+
+  /* ── CONTENT AREA ── */
+  .tab-content {
+    display: none;
+    flex: 1;
+    overflow-y: auto;
+    padding: 20px;
+  }
+  .tab-content.active { display: block; }
+
+  /* Scrollbar */
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+  ::-webkit-scrollbar-thumb:hover { background: var(--muted); }
+
+  /* ── TOKENS TABLE ── */
+  .tokens-grid {
+    display: grid;
+    grid-template-columns: 40px 1fr 1fr 60px;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    overflow: hidden;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+  }
+
+  .tg-head {
+    background: var(--panel);
+    color: var(--muted);
+    padding: 8px 12px;
+    font-size: 10px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: .06em;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .tg-cell {
+    padding: 7px 12px;
+    border-bottom: 1px solid rgba(30,45,71,.5);
+    transition: background .12s;
+  }
+
+  .tg-row:hover .tg-cell { background: rgba(56,189,248,0.04); }
+
+  .token-KEYWORD  { color: var(--keyword); }
+  .token-OPERATOR { color: var(--amber); }
+  .token-NUMBER   { color: var(--number); }
+  .token-STRING   { color: var(--string); }
+  .token-SYMBOL   { color: var(--muted); }
+  .token-IDENTIFIER { color: var(--ident); }
+
+  .tnum { color: var(--muted); font-size: 10px; }
+
+  /* ── SYMBOL TABLE ── */
+  .sym-card {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 16px;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    margin-bottom: 8px;
+    transition: border-color .18s;
+  }
+  .sym-card:hover { border-color: var(--accent); }
+
+  .sym-name { font-family: 'JetBrains Mono', monospace; color: var(--ident); font-size: 13px; font-weight: 600; }
+  .sym-kind { font-size: 10px; font-weight: 600; letter-spacing: .04em; }
+  .kind-sensor   { color: var(--accent); background: rgba(56,189,248,0.1); border: 1px solid rgba(56,189,248,0.2); }
+  .kind-actuator { color: var(--accent2); background: rgba(129,140,248,0.1); border: 1px solid rgba(129,140,248,0.2); }
+  .sym-type { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--keyword); }
+
+  .pill {
+    display: inline-flex; align-items: center;
+    padding: 3px 10px; border-radius: 20px; font-size: 10px; font-weight: 600;
+  }
+
+  /* ── AST TREE VIEW ── */
+  .ast-tree {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    color: var(--green);
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 16px;
+    white-space: pre;
+    overflow-x: auto;
+  }
+
+  /* ── TAC TABLE ── */
+  .tac-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    overflow: hidden;
+  }
+
+  .tac-table thead { background: var(--panel); }
+  .tac-table thead th {
+    padding: 9px 14px;
+    text-align: left;
+    font-size: 10px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: .06em;
+    color: var(--muted);
+    border-bottom: 1px solid var(--border);
+  }
+  .tac-table tbody tr { border-bottom: 1px solid rgba(30,45,71,.5); }
+  .tac-table tbody tr:hover { background: rgba(56,189,248,0.04); }
+  .tac-table td { padding: 8px 14px; }
+
+  .tac-idx { color: var(--muted); }
+  .tac-op  { color: var(--amber); font-weight: 600; }
+  .tac-arg { color: var(--ident); }
+  .tac-res { color: var(--green); font-weight: 600; }
+  .tac-dash { color: var(--border); }
+
+  /* ── CODE VIEW ── */
+  .code-block {
+    background: #06090f;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 18px 20px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12.5px;
+    line-height: 1.75;
+    overflow-x: auto;
+    color: #abb2bf;
+    white-space: pre;
+  }
+
+  /* Syntax highlight classes for code */
+  .c-keyword { color: #c678dd; }
+  .c-type    { color: #e5c07b; }
+  .c-comment { color: #5c6370; font-style: italic; }
+  .c-string  { color: #98c379; }
+  .c-fn      { color: #61afef; }
+  .c-num     { color: #d19a66; }
+  .c-punct   { color: #abb2bf; }
+
+  /* ── SECTION TITLES ── */
+  .section-title {
+    font-size: 12px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .07em;
+    color: var(--muted);
+    margin-bottom: 14px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .section-title::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--border);
+  }
+
+  /* ── SIMULATOR ── */
+  .sim-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    margin-bottom: 20px;
+  }
+
+  .sensor-card {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 14px;
+    transition: border-color .2s;
+  }
+  .sensor-card:hover { border-color: var(--accent); }
+
+  .sensor-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 10px;
+  }
+  .sensor-name { font-family: 'JetBrains Mono', monospace; color: var(--accent); font-size: 13px; font-weight: 600; }
+  .sensor-val  { font-family: 'JetBrains Mono', monospace; color: var(--green); font-size: 20px; font-weight: 700; }
+  .sensor-unit { color: var(--muted); font-size: 11px; font-family: 'JetBrains Mono', monospace; }
+
+  input[type=range] {
+    -webkit-appearance: none;
+    width: 100%;
+    height: 5px;
+    border-radius: 3px;
+    background: var(--border);
+    outline: none;
+    cursor: pointer;
+  }
+  input[type=range]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 16px; height: 16px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #38bdf8, #6366f1);
+    cursor: pointer;
+    box-shadow: 0 0 8px rgba(56,189,248,0.5);
+    transition: transform .12s;
+  }
+  input[type=range]::-webkit-slider-thumb:hover { transform: scale(1.2); }
+
+  /* ── RULE FIRE CARDS ── */
+  .action-log {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 16px;
+    min-height: 140px;
+  }
+
+  .fired-rule {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 10px 14px;
+    background: rgba(52,211,153,0.07);
+    border: 1px solid rgba(52,211,153,0.22);
+    border-radius: 8px;
+    margin-bottom: 8px;
+    animation: slidein .25s ease;
+  }
+
+  @keyframes slidein {
+    from { opacity: 0; transform: translateX(-8px); }
+    to   { opacity: 1; transform: translateX(0); }
+  }
+
+  .fired-rule-name {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--green);
+    margin-bottom: 3px;
+  }
+  .fired-action { font-size: 12px; color: var(--muted); font-family: 'JetBrains Mono', monospace; }
+  .fire-icon { font-size: 18px; flex-shrink: 0; }
+
+  .no-fire {
+    color: var(--muted);
+    font-size: 12px;
+    font-family: 'JetBrains Mono', monospace;
+    text-align: center;
+    padding: 30px;
+  }
+
+  /* ── EVAL STATUS ── */
+  .eval-status-bar {
+    display: flex; align-items: center; gap: 10px;
+    padding: 10px 16px;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    margin-bottom: 14px;
+    font-size: 12px;
+    font-family: 'JetBrains Mono', monospace;
+  }
+
+  .status-light { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+  .status-active { background: var(--green); box-shadow: 0 0 8px var(--green); animation: pulse 1s infinite; }
+  .status-idle   { background: var(--muted); }
+  .status-count  { margin-left: auto; color: var(--green); font-weight: 700; }
+
+  /* ── COPY BTN ── */
+  .copy-btn {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    color: var(--muted);
+    font-size: 11px;
+    padding: 5px 12px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-family: 'JetBrains Mono', monospace;
+    display: flex; align-items: center; gap: 6px;
+    transition: all .15s;
+  }
+  .copy-btn:hover { color: var(--text); border-color: var(--accent); }
+
+  /* ── STATS ROW ── */
+  .stats-row {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 10px;
+    margin-bottom: 18px;
+  }
+
+  .stat-card {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 12px 14px;
+  }
+  .stat-label { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); margin-bottom: 6px; }
+  .stat-value { font-size: 22px; font-weight: 800; font-family: 'JetBrains Mono', monospace; color: var(--accent); }
+
+  /* ── PRESENTATION MODAL ── */
+  .modal-overlay {
+    position: fixed; inset: 0; background: rgba(0,0,0,.8);
+    display: none; align-items: center; justify-content: center;
+    z-index: 100; backdrop-filter: blur(4px);
+  }
+  .modal-overlay.open { display: flex; }
+
+  .modal {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 32px;
+    width: 480px;
+    box-shadow: 0 24px 64px rgba(0,0,0,.7);
+  }
+  .modal h2 { font-size: 18px; font-weight: 700; margin-bottom: 6px; }
+  .modal p  { font-size: 13px; color: var(--muted); margin-bottom: 20px; }
+
+  .modal-steps { display: flex; flex-direction: column; gap: 10px; margin-bottom: 24px; }
+  .modal-step {
+    display: flex; align-items: center; gap: 12px;
+    padding: 12px;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    font-size: 13px;
+    cursor: pointer;
+    transition: all .15s;
+  }
+  .modal-step:hover { border-color: var(--accent); color: var(--accent); }
+  .modal-step .step-n {
+    width: 28px; height: 28px; border-radius: 8px;
+    background: rgba(56,189,248,0.1);
+    border: 1px solid rgba(56,189,248,0.25);
+    color: var(--accent);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 12px; font-weight: 700; flex-shrink: 0;
+  }
+
+  .flex-row { display: flex; align-items: center; gap: 10px; }
+  .ml-auto  { margin-left: auto; }
+
+  /* TAC section spacing */
+  .tab-content > * { margin-bottom: 0; }
+  .gap-section { margin-bottom: 20px; }
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<header>
+  <div class="logo">
+    <div class="logo-icon">⚡</div>
+    <div>
+      <div class="logo-title">RuleC Compiler Studio</div>
+      <div class="logo-sub">Phase 3 — Full Pipeline Demo &nbsp;·&nbsp; Advaith Sathishkumar (24BCT0022)</div>
+    </div>
+  </div>
+  <div class="header-actions">
+    <span class="badge badge-green"><span class="dot"></span> C99 Target</span>
+    <button class="btn btn-secondary" onclick="openPresent()">🎯 Present</button>
+    <button class="btn btn-primary" id="compileBtn" onclick="runCompilation()">▶ Compile &amp; Run</button>
+  </div>
+</header>
+
+<!-- PIPELINE BAR -->
+<div class="pipeline-bar" id="pipelineBar">
+  <div class="pipe-step active" id="ps-lexer" onclick="showTab('lexer')">
+    <span class="pipe-num">1</span> Lexer
+  </div>
+  <span class="pipe-arrow">›</span>
+  <div class="pipe-step" id="ps-parser" onclick="showTab('parser')">
+    <span class="pipe-num">2</span> Parser / AST
+  </div>
+  <span class="pipe-arrow">›</span>
+  <div class="pipe-step" id="ps-semantic" onclick="showTab('semantic')">
+    <span class="pipe-num">3</span> Semantic
+  </div>
+  <span class="pipe-arrow">›</span>
+  <div class="pipe-step" id="ps-tac" onclick="showTab('tac')">
+    <span class="pipe-num">4</span> TAC
+  </div>
+  <span class="pipe-arrow">›</span>
+  <div class="pipe-step" id="ps-codegen" onclick="showTab('codegen')">
+    <span class="pipe-num">5</span> C Code Gen
+  </div>
+  <span class="pipe-arrow">›</span>
+  <div class="pipe-step" id="ps-sim" onclick="showTab('sim')">
+    <span class="pipe-num">6</span> Sensor Sim
+  </div>
+</div>
+
+<!-- WORKSPACE -->
+<div class="workspace">
+
+  <!-- LEFT: EDITOR -->
+  <div class="editor-panel">
+    <div class="panel-header">
+      <span class="panel-label">
+        <span class="dot-accent"></span> Source Editor (.rc)
+      </span>
+      <select id="presetSelect" onchange="loadPreset()">
+        <option value="overheat">Overheat Alert (full)</option>
+        <option value="multi">Multi-Sensor + OR</option>
+        <option value="hvac">Smart HVAC Range</option>
+        <option value="err_contradiction">❌ Contradiction Error</option>
+        <option value="err_undeclared">❌ Undeclared Sensor</option>
+      </select>
+    </div>
+
+    <textarea id="sourceCode" spellcheck="false"></textarea>
+
+    <div class="diag-panel">
+      <div class="diag-header">
+        <span>◈</span> Compiler Output
+        <span id="compileStatus" class="ml-auto" style="font-size:11px;color:var(--muted)">Idle</span>
+      </div>
+      <div id="compilerLog">
+        <div class="log-info">Ready — click "Compile &amp; Run" to begin.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- RIGHT: OUTPUT PANELS -->
+  <div class="output-panel">
+
+    <!-- TAB: LEXER -->
+    <div class="tab-content active" id="tab-lexer">
+      <div class="stats-row" id="lexerStats">
+        <div class="stat-card"><div class="stat-label">Total Tokens</div><div class="stat-value" id="s-tokens">—</div></div>
+        <div class="stat-card"><div class="stat-label">Keywords</div><div class="stat-value" id="s-keywords">—</div></div>
+        <div class="stat-card"><div class="stat-label">Identifiers</div><div class="stat-value" id="s-idents">—</div></div>
+        <div class="stat-card"><div class="stat-label">Source Lines</div><div class="stat-value" id="s-lines">—</div></div>
+      </div>
+
+      <div class="section-title">Token Stream</div>
+      <div id="lexerOutput">
+        <div style="color:var(--muted);font-size:13px;text-align:center;padding:40px;">
+          Compile the source to see the token stream.
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB: PARSER / AST -->
+    <div class="tab-content" id="tab-parser">
+      <div class="section-title">Abstract Syntax Tree</div>
+      <pre class="ast-tree" id="astOutput">Compile the source to see the AST.</pre>
+    </div>
+
+    <!-- TAB: SEMANTIC -->
+    <div class="tab-content" id="tab-semantic">
+      <div class="section-title">Symbol Table</div>
+      <div id="symTableOutput" class="gap-section">
+        <div style="color:var(--muted);font-size:13px;">No symbols yet.</div>
+      </div>
+
+      <div class="section-title">Semantic Checks</div>
+      <div id="semanticChecks">
+        <div style="color:var(--muted);font-size:13px;">Run compiler to see checks.</div>
+      </div>
+    </div>
+
+    <!-- TAB: TAC -->
+    <div class="tab-content" id="tab-tac">
+      <div class="section-title">Three-Address Code (TAC)</div>
+      <div id="tacOutput">
+        <div style="color:var(--muted);font-size:13px;text-align:center;padding:40px;">
+          Compile the source to generate TAC.
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB: CODEGEN -->
+    <div class="tab-content" id="tab-codegen">
+      <div class="flex-row gap-section" style="margin-bottom:14px;">
+        <div class="section-title" style="flex:1;margin-bottom:0;">Generated C99 — evaluate_rules.c</div>
+        <button class="copy-btn" onclick="copyCode()">⎘ Copy</button>
+      </div>
+      <div class="code-block" id="codeOutput">// Compile source to generate C code.</div>
+    </div>
+
+    <!-- TAB: SIMULATOR -->
+    <div class="tab-content" id="tab-sim">
+      <div class="section-title">Live Sensor Simulator</div>
+
+      <div id="evalStatusBar" class="eval-status-bar">
+        <span class="status-light status-idle" id="simLight"></span>
+        <span id="simStatusText" style="color:var(--muted);">Compile source first</span>
+        <span class="status-count" id="simFiredCount"></span>
+      </div>
+
+      <div id="sensorSliders" class="sim-grid">
+        <div style="grid-column:1/-1;color:var(--muted);font-size:13px;text-align:center;padding:20px;">
+          Compile a RuleC program to generate sensor controls.
+        </div>
+      </div>
+
+      <div class="section-title">Rule Execution Log</div>
+      <div class="action-log" id="actionLog">
+        <div class="no-fire">No rules fired yet.</div>
+      </div>
+    </div>
+
+  </div><!-- /output-panel -->
+</div><!-- /workspace -->
+
+<!-- PRESENT MODAL -->
+<div class="modal-overlay" id="presentModal">
+  <div class="modal">
+    <h2>🎯 Presentation Mode</h2>
+    <p>Jump to a specific pipeline stage to walk through the demo.</p>
+    <div class="modal-steps">
+      <div class="modal-step" onclick="gotoPresent('lexer')">
+        <span class="step-n">1</span> Lexer — Token Stream
+      </div>
+      <div class="modal-step" onclick="gotoPresent('parser')">
+        <span class="step-n">2</span> Parser — Abstract Syntax Tree
+      </div>
+      <div class="modal-step" onclick="gotoPresent('semantic')">
+        <span class="step-n">3</span> Semantic Analysis &amp; Symbol Table
+      </div>
+      <div class="modal-step" onclick="gotoPresent('tac')">
+        <span class="step-n">4</span> TAC — Three-Address Code
+      </div>
+      <div class="modal-step" onclick="gotoPresent('codegen')">
+        <span class="step-n">5</span> C99 Code Generation
+      </div>
+      <div class="modal-step" onclick="gotoPresent('sim')">
+        <span class="step-n">6</span> Live Sensor Simulator
+      </div>
+    </div>
+    <div class="flex-row">
+      <button class="btn btn-secondary" onclick="closePresent()" style="flex:1;">Close</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ──────────────────────────────────────────────────────────
+//  PRESETS
+// ──────────────────────────────────────────────────────────
+const PRESETS = {
+  overheat: `// RuleC — Phase 3 Demo Program
+// Three sensors, three rules covering AND / NOT operators
+
+SENSOR temp: float;
+SENSOR humidity: float;
+SENSOR motion: int;
+
+RULE overheat_alert:
+  IF temp > 30.0 AND humidity < 20.0
+  THEN alert("High temp, low humidity");
+
+RULE comfort_zone:
+  IF temp >= 18.0 AND temp <= 26.0
+  THEN log("Temperature within comfort range");
+
+RULE intruder_check:
+  IF motion == 1 AND NOT (temp > 40.0)
+  THEN actuate(light, ON);`,
+
+  multi: `// Multi-Sensor + OR operator demo
+
+SENSOR temp: float;
+SENSOR smoke: int;
+
+RULE fire_alert:
+  IF temp > 60.0 OR smoke == 1
+  THEN alert("Fire or smoke detected!");
+
+RULE high_temp_warning:
+  IF temp > 50.0
+  THEN log("Temperature dangerously high");`,
+
+  hvac: `// Smart HVAC Range Control
+
+SENSOR temp: float;
+
+RULE ac_cooling:
+  IF temp >= 28.0
+  THEN actuate(ac_unit, COOLING);
+
+RULE ac_off:
+  IF temp < 22.0
+  THEN actuate(ac_unit, OFF);`,
+
+  err_contradiction: `// Semantic Error: Contradictory Rule
+// temp > 30.0 AND temp < 10.0 can NEVER both be true
+
+SENSOR temp: float;
+
+RULE impossible_rule:
+  IF temp > 30.0 AND temp < 10.0
+  THEN alert("This can never fire");`,
+
+  err_undeclared: `// Semantic Error: Undeclared Sensor
+// 'pressure' is used but never declared with SENSOR
+
+SENSOR temp: float;
+
+RULE pressure_check:
+  IF pressure > 100.0
+  THEN alert("Pressure too high");`
+};
+
+// ──────────────────────────────────────────────────────────
+//  STATE
+// ──────────────────────────────────────────────────────────
+let currentAST = null;
+let symbolTab  = {};
+let tacInstructions = [];
+let generatedC = '';
+let activeTab  = 'lexer';
+
+// ──────────────────────────────────────────────────────────
+//  UI HELPERS
+// ──────────────────────────────────────────────────────────
+function loadPreset() {
+  const key = document.getElementById('presetSelect').value;
+  document.getElementById('sourceCode').value = PRESETS[key] || PRESETS.overheat;
+}
+
+function showTab(id) {
+  document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+  document.querySelectorAll('.pipe-step').forEach(el => el.classList.remove('active'));
+  document.getElementById('tab-' + id).classList.add('active');
+  document.getElementById('ps-' + id).classList.add('active');
+  activeTab = id;
+}
+
+function openPresent()  { document.getElementById('presentModal').classList.add('open'); }
+function closePresent() { document.getElementById('presentModal').classList.remove('open'); }
+
+function gotoPresent(tab) {
+  closePresent();
+  showTab(tab);
+}
+
+function log(msg, type='info') {
+  const box = document.getElementById('compilerLog');
+  const cls = { info:'log-info', ok:'log-ok', warn:'log-warn', error:'log-error' }[type] || 'log-info';
+  box.innerHTML += `<div class="${cls}">${msg}</div>`;
+  box.scrollTop = box.scrollHeight;
+}
+
+function clearLog() { document.getElementById('compilerLog').innerHTML = ''; }
+
+function setStatus(text, color) {
+  const el = document.getElementById('compileStatus');
+  el.textContent = text;
+  el.style.color = color || 'var(--muted)';
+}
+
+function markPipe(id, state) {
+  const el = document.getElementById('ps-' + id);
+  el.classList.remove('done', 'error-step', 'active');
+  if (state) el.classList.add(state);
+}
+
+// ──────────────────────────────────────────────────────────
+//  LEXER
+// ──────────────────────────────────────────────────────────
+const KEYWORDS = new Set(['SENSOR','ACTUATOR','RULE','IF','THEN','ELSE','AND','OR','NOT','float','int','bool']);
+
+function lexer(code) {
+  const tokens = [];
+  let pos = 0, line = 1;
+
+  while (pos < code.length) {
+    let ch = code[pos];
+    if (ch === '\n') { line++; pos++; continue; }
+    if (/\s/.test(ch)) { pos++; continue; }
+    if (ch === '/' && code[pos+1] === '/') {
+      while (pos < code.length && code[pos] !== '\n') pos++;
+      continue;
+    }
+    if ('(),:;'.includes(ch)) { tokens.push({ type:'SYMBOL', value:ch, line }); pos++; continue; }
+    if ('><=!'.includes(ch)) {
+      let op = ch;
+      if (code[pos+1] === '=') { op += '='; pos++; }
+      tokens.push({ type:'OPERATOR', value:op, line }); pos++; continue;
+    }
+    if (ch === '"') {
+      let s = ''; pos++;
+      while (pos < code.length && code[pos] !== '"') { s += code[pos++]; }
+      pos++;
+      tokens.push({ type:'STRING', value:s, line }); continue;
+    }
+    if (/\d/.test(ch)) {
+      let n = '', hasDot = false;
+      while (pos < code.length && /[\d.]/.test(code[pos])) {
+        if (code[pos] === '.') hasDot = true;
+        n += code[pos++];
+      }
+      tokens.push({ type:'NUMBER', value: hasDot ? parseFloat(n) : parseInt(n), raw: n, line }); continue;
+    }
+    if (/[a-zA-Z_]/.test(ch)) {
+      let id = '';
+      while (pos < code.length && /\w/.test(code[pos])) id += code[pos++];
+      tokens.push({ type: KEYWORDS.has(id) ? 'KEYWORD' : 'IDENTIFIER', value: id, line }); continue;
+    }
+    throw new Error(`Unexpected character '${ch}' at line ${line}`);
+  }
+  return tokens;
+}
+
+function renderLexer(tokens) {
+  const kw  = tokens.filter(t => t.type === 'KEYWORD').length;
+  const id  = tokens.filter(t => t.type === 'IDENTIFIER').length;
+  const lines = Math.max(...tokens.map(t => t.line), 1);
+
+  document.getElementById('s-tokens').textContent   = tokens.length;
+  document.getElementById('s-keywords').textContent  = kw;
+  document.getElementById('s-idents').textContent    = id;
+  document.getElementById('s-lines').textContent     = lines;
+
+  const grid = document.createElement('div');
+  grid.className = 'tokens-grid';
+  grid.innerHTML = `
+    <div class="tg-head">#</div>
+    <div class="tg-head">Type</div>
+    <div class="tg-head">Lexeme</div>
+    <div class="tg-head">Line</div>
+  `;
+
+  tokens.forEach((t, i) => {
+    const row = document.createElement('div');
+    row.style.display = 'contents';
+    row.className = 'tg-row';
+    const valStr = typeof t.value === 'string' ? t.value : (t.raw || String(t.value));
+    row.innerHTML = `
+      <div class="tg-cell tnum">${i+1}</div>
+      <div class="tg-cell token-${t.type}">${t.type}</div>
+      <div class="tg-cell token-${t.type}">${escHtml(valStr)}</div>
+      <div class="tg-cell tnum">${t.line}</div>
+    `;
+    grid.appendChild(row);
+  });
+
+  document.getElementById('lexerOutput').innerHTML = '';
+  document.getElementById('lexerOutput').appendChild(grid);
+}
+
+// ──────────────────────────────────────────────────────────
+//  PARSER
+// ──────────────────────────────────────────────────────────
+function parse(tokens) {
+  let p = 0;
+  const peek  = () => tokens[p];
+  const adv   = () => tokens[p++];
+  const expect = (type, val) => {
+    const t = tokens[p];
+    if (!t) throw new Error('Unexpected end of input');
+    if (type && t.type !== type) throw new Error(`Line ${t.line}: expected ${type}, got '${t.value}'`);
+    if (val  && t.value !== val) throw new Error(`Line ${t.line}: expected '${val}', got '${t.value}'`);
+    return adv();
+  };
+
+  const ast = { sensors: [], rules: [] };
+
+  while (p < tokens.length) {
+    const t = peek();
+    if (t.type === 'KEYWORD' && t.value === 'SENSOR') {
+      adv();
+      const name = expect('IDENTIFIER').value;
+      expect('SYMBOL', ':');
+      const type = adv().value;
+      expect('SYMBOL', ';');
+      ast.sensors.push({ name, type, line: t.line });
+    } else if (t.type === 'KEYWORD' && t.value === 'RULE') {
+      adv();
+      const id = expect('IDENTIFIER').value;
+      expect('SYMBOL', ':');
+      expect('KEYWORD', 'IF');
+      const condition = parseOr();
+      expect('KEYWORD', 'THEN');
+      const actName = expect('IDENTIFIER').value;
+      expect('SYMBOL', '(');
+      const args = [];
+      if (peek() && peek().value !== ')') {
+        args.push(adv());
+        while (peek() && peek().value === ',') { adv(); args.push(adv()); }
+      }
+      expect('SYMBOL', ')');
+      expect('SYMBOL', ';');
+      ast.rules.push({ id, condition, action: { name: actName, args }, line: t.line });
+    } else {
+      throw new Error(`Line ${t.line}: unexpected token '${t.value}'`);
+    }
+  }
+
+  function parseOr() {
+    let left = parseAnd();
+    while (peek() && peek().type === 'KEYWORD' && peek().value === 'OR') {
+      adv();
+      left = { kind: 'BinOp', op: 'OR', left, right: parseAnd() };
+    }
+    return left;
+  }
+  function parseAnd() {
+    let left = parseNot();
+    while (peek() && peek().type === 'KEYWORD' && peek().value === 'AND') {
+      adv();
+      left = { kind: 'BinOp', op: 'AND', left, right: parseNot() };
+    }
+    return left;
+  }
+  function parseNot() {
+    if (peek() && peek().type === 'KEYWORD' && peek().value === 'NOT') {
+      adv();
+      return { kind: 'UnaryOp', op: 'NOT', expr: parsePrimary() };
+    }
+    return parsePrimary();
+  }
+  function parsePrimary() {
+    if (peek() && peek().value === '(') {
+      adv();
+      const expr = parseOr();
+      expect('SYMBOL', ')');
+      return expr;
+    }
+    const sensor = expect('IDENTIFIER').value;
+    const op     = expect('OPERATOR').value;
+    const valTok = adv();
+    return { kind: 'Cmp', sensor, op, value: valTok.value, rawType: valTok.type, line: valTok.line };
+  }
+
+  return ast;
+}
+
+function renderAST(ast) {
+  document.getElementById('astOutput').textContent = JSON.stringify(ast, null, 2);
+}
+
+// ──────────────────────────────────────────────────────────
+//  SEMANTIC ANALYSIS
+// ──────────────────────────────────────────────────────────
+const KNOWN_ACTIONS = { alert:1, log:1, actuate:2 };
+
+function semanticCheck(ast) {
+  const sym = {};
+  const checks = [];
+
+  // Build symbol table
+  for (const s of ast.sensors) {
+    if (sym[s.name]) throw new Error(`Line ${s.line}: sensor '${s.name}' declared more than once`);
+    sym[s.name] = { type: s.type, kind: 'SENSOR' };
+    checks.push({ ok: true, msg: `Symbol '${s.name}' inserted → type:${s.type}, kind:SENSOR` });
+  }
+
+  const ruleNames = new Set();
+  for (const rule of ast.rules) {
+    if (ruleNames.has(rule.id)) throw new Error(`Line ${rule.line}: duplicate rule name '${rule.id}'`);
+    ruleNames.add(rule.id);
+    checks.push({ ok: true, msg: `Rule '${rule.id}' — checking condition...` });
+
+    checkCond(rule.condition, sym, checks, rule.id);
+
+    // Action check
+    if (!KNOWN_ACTIONS[rule.action.name]) throw new Error(`Line ${rule.line}: unknown action '${rule.action.name}'`);
+    const expectedArgs = KNOWN_ACTIONS[rule.action.name];
+    if (rule.action.args.length !== expectedArgs) throw new Error(`Line ${rule.line}: action '${rule.action.name}' expects ${expectedArgs} arg(s), got ${rule.action.args.length}`);
+    checks.push({ ok: true, msg: `Action '${rule.action.name}' validated (${expectedArgs} arg)` });
+  }
+
+  return { sym, checks };
+}
+
+function checkCond(node, sym, checks, ruleName) {
+  if (node.kind === 'Cmp') {
+    if (!sym[node.sensor]) throw new Error(`Rule '${ruleName}': undeclared sensor '${node.sensor}'`);
+    const stype = sym[node.sensor].type;
+    if (['>', '<', '>=', '<='].includes(node.op) && !['float','int'].includes(stype))
+      throw new Error(`Rule '${ruleName}': operator '${node.op}' requires numeric sensor, '${node.sensor}' is '${stype}'`);
+    checks.push({ ok: true, msg: `'${node.sensor} ${node.op} ${node.value}' — type OK (${stype})` });
+
+    // Contradiction detection: scan sibling ANDs
+  } else if (node.kind === 'BinOp') {
+    checkCond(node.left,  sym, checks, ruleName);
+    checkCond(node.right, sym, checks, ruleName);
+  } else if (node.kind === 'UnaryOp') {
+    checkCond(node.expr, sym, checks, ruleName);
+  }
+}
+
+function checkContradictions(ast, ruleName) {
+  // Find the rule
+  for (const rule of ast.rules) {
+    if (rule.id !== ruleName) continue;
+    const comps = [];
+    flattenAnd(rule.condition, comps);
+    const bySensor = {};
+    for (const c of comps) bySensor[c.sensor] = (bySensor[c.sensor] || []).concat(c);
+    for (const [sensor, cs] of Object.entries(bySensor)) {
+      const lowers = cs.filter(c => ['>', '>='].includes(c.op)).map(c => parseFloat(c.value));
+      const uppers = cs.filter(c => ['<', '<='].includes(c.op)).map(c => parseFloat(c.value));
+      if (lowers.length && uppers.length && Math.max(...lowers) >= Math.min(...uppers))
+        throw new Error(`Rule '${ruleName}': contradictory condition on '${sensor}' (lower ${Math.max(...lowers)} ≥ upper ${Math.min(...uppers)}) — unreachable rule`);
+    }
+  }
+}
+
+function flattenAnd(node, acc) {
+  if (node.kind === 'BinOp' && node.op === 'AND') { flattenAnd(node.left, acc); flattenAnd(node.right, acc); }
+  else if (node.kind === 'Cmp') acc.push(node);
+}
+
+function renderSymbols(sym, checks) {
+  const symDiv = document.getElementById('symTableOutput');
+  symDiv.innerHTML = Object.entries(sym).map(([name, meta]) => `
+    <div class="sym-card">
+      <div>
+        <div class="sym-name">${name}</div>
+        <div class="sym-type" style="margin-top:3px;">${meta.type}</div>
+      </div>
+      <span class="pill kind-${meta.kind.toLowerCase()}">${meta.kind}</span>
+    </div>
+  `).join('') || '<div style="color:var(--muted)">No symbols.</div>';
+
+  const chkDiv = document.getElementById('semanticChecks');
+  chkDiv.innerHTML = checks.map(c => `
+    <div style="display:flex;align-items:flex-start;gap:8px;padding:7px 0;border-bottom:1px solid var(--border);font-family:'JetBrains Mono',monospace;font-size:11.5px;">
+      <span style="color:${c.ok ? 'var(--green)' : 'var(--red)'};flex-shrink:0;">${c.ok ? '✓' : '✗'}</span>
+      <span style="color:${c.ok ? 'var(--text)' : 'var(--red)'};">${escHtml(c.msg)}</span>
+    </div>
+  `).join('');
+}
+
+// ──────────────────────────────────────────────────────────
+//  TAC GENERATION
+// ──────────────────────────────────────────────────────────
+function generateTAC(ast) {
+  const instrs = [];
+  let tVar = 0, lVar = 0;
+  const tmp = () => `t${tVar++}`;
+  const lbl = () => `L${lVar++}`;
+
+  for (const rule of ast.rules) {
+    instrs.push({ op: '// RULE', arg1: rule.id, arg2: '', result: '' });
+    const condResult = genCondTAC(rule.condition, instrs, tmp);
+    const exitLabel = lbl();
+    instrs.push({ op: 'IF_FALSE', arg1: condResult, arg2: '—', result: `GOTO ${exitLabel}` });
+    const argStr = rule.action.args.map(a => a.value).join(', ');
+    instrs.push({ op: 'CALL', arg1: rule.action.name, arg2: `"${argStr}"`, result: '—' });
+    instrs.push({ op: 'LABEL', arg1: exitLabel, arg2: '—', result: '—' });
+  }
+  return instrs;
+}
+
+function genCondTAC(node, instrs, tmp) {
+  if (node.kind === 'Cmp') {
+    const t = tmp();
+    instrs.push({ op: node.op, arg1: node.sensor, arg2: String(node.value), result: t });
+    return t;
+  }
+  if (node.kind === 'BinOp') {
+    const l = genCondTAC(node.left,  instrs, tmp);
+    const r = genCondTAC(node.right, instrs, tmp);
+    const t = tmp();
+    instrs.push({ op: node.op, arg1: l, arg2: r, result: t });
+    return t;
+  }
+  if (node.kind === 'UnaryOp') {
+    const e = genCondTAC(node.expr, instrs, tmp);
+    const t = tmp();
+    instrs.push({ op: 'NOT', arg1: e, arg2: '—', result: t });
+    return t;
+  }
+  return '?';
+}
+
+function renderTAC(instrs) {
+  const isComment = i => i.op.startsWith('//');
+  const rows = instrs.map((ins, idx) => {
+    if (isComment(ins)) {
+      return `<tr><td colspan="5" style="padding:10px 14px;color:var(--muted);font-style:italic;">${escHtml(ins.op + ' ' + ins.arg1)}</td></tr>`;
+    }
+    return `<tr>
+      <td class="tac-idx">${String(idx).padStart(3,'0')}</td>
+      <td class="tac-op">${escHtml(ins.op)}</td>
+      <td class="tac-arg">${escHtml(ins.arg1)}</td>
+      <td class="tac-arg">${escHtml(ins.arg2)}</td>
+      <td class="tac-res">${escHtml(ins.result)}</td>
+    </tr>`;
+  }).join('');
+
+  document.getElementById('tacOutput').innerHTML = `
+    <table class="tac-table">
+      <thead>
+        <tr>
+          <th>Index</th><th>Op</th><th>Arg1</th><th>Arg2</th><th>Result</th>
+        </tr>
+      </thead>
+      <tbody>${rows}</tbody>
+    </table>
+  `;
+}
+
+// ──────────────────────────────────────────────────────────
+//  C CODE GENERATOR
+// ──────────────────────────────────────────────────────────
+function generateC(ast, sym) {
+  const ctype = { float:'float', int:'int', bool:'int' };
+  let c = '';
+  c += `// AUTO-GENERATED by RuleC Compiler (Phase 3)\n`;
+  c += `// Do not edit by hand.\n\n`;
+  c += `#include <stdio.h>\n#include <stdbool.h>\n\n`;
+  c += `typedef struct {\n`;
+  for (const [name, meta] of Object.entries(sym)) {
+    c += `    ${ctype[meta.type] || meta.type} ${name};\n`;
+  }
+  c += `} SensorState;\n\n`;
+  c += `// Action callbacks\n`;
+  c += `void action_alert(const char *msg)           { printf("[ALERT] %s\\n", msg); }\n`;
+  c += `void action_log(const char *msg)             { printf("[LOG]   %s\\n", msg); }\n`;
+  c += `void action_actuate(const char *dev, const char *state) {\n`;
+  c += `    printf("[ACTUATE] %s -> %s\\n", dev, state); }\n\n`;
+  c += `void evaluate_rules(const SensorState *s) {\n`;
+  for (const rule of ast.rules) {
+    c += `    // RULE: ${rule.id}\n`;
+    c += `    if (${genCondC(rule.condition)}) {\n`;
+    const args = rule.action.args.map(a =>
+      a.type === 'STRING' ? `"${a.value}"` : `"${a.value}"`
+    ).join(', ');
+    c += `        action_${rule.action.name}(${args});\n`;
+    c += `    }\n\n`;
+  }
+  c += `}\n`;
+  return c;
+}
+
+function genCondC(node) {
+  if (node.kind === 'Cmp') return `(s->${node.sensor} ${node.op} ${node.value})`;
+  if (node.kind === 'BinOp') {
+    const op = node.op === 'AND' ? '&&' : '||';
+    return `(${genCondC(node.left)} ${op} ${genCondC(node.right)})`;
+  }
+  if (node.kind === 'UnaryOp') return `(!${genCondC(node.expr)})`;
+  return '?';
+}
+
+function syntaxHighlightC(code) {
+  const kws = /\b(void|int|float|bool|char|const|if|return|typedef|struct|printf|include)\b/g;
+  return escHtml(code)
+    .replace(kws, m => `<span class="c-keyword">${m}</span>`)
+    .replace(/\/\/.*$/gm, m => `<span class="c-comment">${m}</span>`)
+    .replace(/&quot;[^&]*&quot;/g, m => `<span class="c-string">${m}</span>`)
+    .replace(/\b(\d+\.?\d*f?)\b/g, m => `<span class="c-num">${m}</span>`);
+}
+
+// ──────────────────────────────────────────────────────────
+//  SENSOR SIMULATOR
+// ──────────────────────────────────────────────────────────
+function setupSim(sym, ast) {
+  const sensors = Object.keys(sym);
+  if (!sensors.length) return;
+
+  const grid = document.getElementById('sensorSliders');
+  grid.innerHTML = sensors.map(s => {
+    const isInt = sym[s].type === 'int';
+    return `
+    <div class="sensor-card">
+      <div class="sensor-header">
+        <span class="sensor-name">${s}</span>
+        <span class="sensor-unit">${sym[s].type}</span>
+      </div>
+      <div class="sensor-val" id="val-${s}">25${isInt ? '' : '.0'}</div>
+      <input type="range" id="slider-${s}"
+        min="0" max="${isInt ? 2 : 100}" value="${isInt ? 0 : 25}" step="${isInt ? 1 : 0.5}"
+        oninput="updateSim()">
+    </div>
+    `;
+  }).join('');
+
+  updateSim();
+}
+
+function updateSim() {
+  if (!currentAST) return;
+
+  const vals = {};
+  for (const s of Object.keys(symbolTab)) {
+    const el = document.getElementById('slider-' + s);
+    if (!el) continue;
+    vals[s] = parseFloat(el.value);
+    document.getElementById('val-' + s).textContent =
+      symbolTab[s].type === 'int' ? parseInt(el.value) : parseFloat(el.value).toFixed(1);
+  }
+
+  const fired = [];
+  for (const rule of currentAST.rules) {
+    if (evalCond(rule.condition, vals)) {
+      fired.push(rule);
+    }
+  }
+
+  const light = document.getElementById('simLight');
+  const statusText = document.getElementById('simStatusText');
+  const firedCount = document.getElementById('simFiredCount');
+
+  if (fired.length) {
+    light.className = 'status-light status-active';
+    statusText.textContent = 'Rules firing';
+    statusText.style.color = 'var(--green)';
+    firedCount.textContent = `${fired.length} rule${fired.length > 1 ? 's' : ''} active`;
+  } else {
+    light.className = 'status-light status-idle';
+    statusText.textContent = 'No rules triggered';
+    statusText.style.color = 'var(--muted)';
+    firedCount.textContent = '';
+  }
+
+  const log = document.getElementById('actionLog');
+  if (!fired.length) {
+    log.innerHTML = '<div class="no-fire">No rules fired for current sensor values.</div>';
+    return;
+  }
+
+  log.innerHTML = fired.map(rule => {
+    const argStr = rule.action.args.map(a => `"${a.value}"`).join(', ');
+    const actionLabel = { alert:'🔴 ALERT', log:'📋 LOG', actuate:'⚙️ ACTUATE' }[rule.action.name] || rule.action.name.toUpperCase();
+    return `
+      <div class="fired-rule">
+        <span class="fire-icon">✅</span>
+        <div>
+          <div class="fired-rule-name">[RULE FIRED: ${rule.id}]</div>
+          <div class="fired-action">action_${rule.action.name}(${escHtml(argStr)})</div>
+          <div style="font-size:11px;color:var(--amber);margin-top:3px;">${actionLabel}</div>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+function evalCond(node, vals) {
+  if (node.kind === 'Cmp') {
+    const v = vals[node.sensor];
+    const r = parseFloat(node.value) || 0;
+    if (v === undefined) return false;
+    switch (node.op) {
+      case '>':  return v > r;
+      case '<':  return v < r;
+      case '>=': return v >= r;
+      case '<=': return v <= r;
+      case '==': return v === r;
+      case '!=': return v !== r;
+    }
+  }
+  if (node.kind === 'BinOp') {
+    if (node.op === 'AND') return evalCond(node.left, vals) && evalCond(node.right, vals);
+    if (node.op === 'OR')  return evalCond(node.left, vals) || evalCond(node.right, vals);
+  }
+  if (node.kind === 'UnaryOp' && node.op === 'NOT') return !evalCond(node.expr, vals);
+  return false;
+}
+
+// ──────────────────────────────────────────────────────────
+//  MAIN COMPILE DRIVER
+// ──────────────────────────────────────────────────────────
+function runCompilation() {
+  clearLog();
+  setStatus('Compiling…', 'var(--amber)');
+  ['lexer','parser','semantic','tac','codegen','sim'].forEach(id => markPipe(id, ''));
+
+  const src = document.getElementById('sourceCode').value;
+  const btn = document.getElementById('compileBtn');
+  btn.disabled = true;
+
+  // Animate through phases with slight delay for effect
+  setTimeout(() => {
+    try {
+      // ── Phase 1: Lex ──
+      log('[1/5] Lexical analysis…');
+      const tokens = lexer(src);
+      renderLexer(tokens);
+      log(`  → ${tokens.length} tokens generated`, 'ok');
+      markPipe('lexer', 'done');
+
+      // ── Phase 2: Parse ──
+      log('[2/5] Parsing → AST…');
+      const ast = parse(tokens);
+      currentAST = ast;
+      renderAST(ast);
+      log(`  → ${ast.sensors.length} sensors, ${ast.rules.length} rules`, 'ok');
+      markPipe('parser', 'done');
+
+      // ── Phase 3: Semantic ──
+      log('[3/5] Semantic analysis…');
+      // Check contradictions first
+      for (const rule of ast.rules) checkContradictions(ast, rule.id);
+      const { sym, checks } = semanticCheck(ast);
+      symbolTab = sym;
+      renderSymbols(sym, checks);
+      log(`  → Symbol table: {${Object.entries(sym).map(([k,v])=>k+':'+v.type).join(', ')}}`, 'ok');
+      log('  → No semantic errors', 'ok');
+      markPipe('semantic', 'done');
+
+      // ── Phase 4: TAC ──
+      log('[4/5] Generating Three-Address Code…');
+      const tac = generateTAC(ast);
+      tacInstructions = tac;
+      renderTAC(tac);
+      log(`  → ${tac.filter(i => !i.op.startsWith('//') && i.op !== 'LABEL').length} TAC instructions emitted`, 'ok');
+      markPipe('tac', 'done');
+
+      // ── Phase 5: CodeGen ──
+      log('[5/5] Emitting C99 target code…');
+      const c = generateC(ast, sym);
+      generatedC = c;
+      document.getElementById('codeOutput').innerHTML = syntaxHighlightC(c);
+      log('  → evaluate_rules.c generated (zero heap allocations)', 'ok');
+      markPipe('codegen', 'done');
+
+      // ── Simulator ──
+      setupSim(sym, ast);
+      markPipe('sim', 'done');
+
+      setStatus('✓ Compiled', 'var(--green)');
+      log('Compilation successful. All 5 phases complete.', 'ok');
+
+    } catch (err) {
+      const phase = err.message.includes('Lex') || err.message.includes('character') ? 'lexer'
+                  : err.message.includes('Syntax') || err.message.includes('expected') ? 'parser'
+                  : 'semantic';
+      markPipe(phase, 'error-step');
+      setStatus('✗ Error', 'var(--red)');
+      log(`COMPILE ERROR: ${err.message}`, 'error');
+
+      // Show which tab the error is on
+      showTab(phase);
+    }
+
+    btn.disabled = false;
+  }, 80);
+}
+
+// ──────────────────────────────────────────────────────────
+//  UTILS
+// ──────────────────────────────────────────────────────────
+function escHtml(s) {
+  return String(s)
+    .replace(/&/g,'&amp;')
+    .replace(/</g,'&lt;')
+    .replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;');
+}
+
+function copyCode() {
+  navigator.clipboard.writeText(generatedC).then(() => {
+    const btn = event.currentTarget;
+    btn.textContent = '✓ Copied!';
+    setTimeout(() => btn.innerHTML = '⎘ Copy', 1500);
+  });
+}
+
+// ── INIT ──
+loadPreset();
+runCompilation();
+</script>
+</body>
+</html>
