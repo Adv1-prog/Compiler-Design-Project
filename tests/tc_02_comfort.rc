@@ -1,0 +1,9 @@
+// tests/tc_02_comfort.rc — TC-02: Comfort Zone Only
+// Single rule for comfort-only scenario
+SENSOR temp: float;
+SENSOR humidity: float;
+SENSOR motion: int;
+
+RULE comfort_zone:
+  IF temp >= 18.0 AND temp <= 26.0
+  THEN log("Temperature within comfort range");

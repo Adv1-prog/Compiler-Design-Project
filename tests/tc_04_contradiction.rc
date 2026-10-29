@@ -1,0 +1,7 @@
+// tests/tc_04_contradiction.rc — TC-04: Semantic Error — Contradictory Rule
+// Expected: Compiler rejects with COMPILE ERROR at semantic-analysis phase
+SENSOR temp: float;
+
+RULE impossible_rule:
+  IF temp > 30.0 AND temp < 10.0
+  THEN alert("This can never fire");

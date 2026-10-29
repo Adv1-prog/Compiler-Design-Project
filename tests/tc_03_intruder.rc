@@ -1,0 +1,9 @@
+// tests/tc_03_intruder.rc — TC-03: Intruder Check (with NOT guard)
+// Tests NOT operator: fires only if motion detected AND temp is safe (<= 40)
+SENSOR temp: float;
+SENSOR humidity: float;
+SENSOR motion: int;
+
+RULE intruder_check:
+  IF motion == 1 AND NOT (temp > 40.0)
+  THEN actuate(light, ON);

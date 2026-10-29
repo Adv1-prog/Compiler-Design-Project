@@ -1,0 +1,7 @@
+// tests/tc_05_undeclared_sensor.rc — TC-05: Semantic Error — Undeclared Sensor
+// Expected: Compiler rejects with COMPILE ERROR because 'pressure' was never declared
+SENSOR temp: float;
+
+RULE pressure_check:
+  IF pressure > 100.0
+  THEN alert("Pressure too high");

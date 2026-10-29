@@ -1,0 +1,12 @@
+// tests/tc_06_multi_rule_or.rc — TC-06: OR Condition and Multiple Rules
+// Tests OR operator in conditions and multiple simultaneous rule firings
+SENSOR temp: float;
+SENSOR smoke: int;
+
+RULE fire_alert:
+  IF temp > 60.0 OR smoke == 1
+  THEN alert("Fire or smoke detected!");
+
+RULE high_temp_only:
+  IF temp > 50.0
+  THEN log("Temperature dangerously high");
